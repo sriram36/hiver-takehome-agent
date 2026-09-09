@@ -1,0 +1,20 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.ipynb_checkpoints/
+
+# Raw Kaggle dataset (300MB+ — not committed)
+twcs/
+twcs.csv
+data/raw/
+
+# Large intermediate files (regenerate with build_index.py)
+data/processed/amazonhelp_subsample.csv
+data/retrieval_pairs.csv
+
+# Committed intentionally (needed for <15min reproduction):
+# data/golden/*.csv  -> keep
+# data/faiss.index   -> keep (pre-built index)
+# data/vectorizer.pkl -> keep
+# data/brand_voice.md -> keep
