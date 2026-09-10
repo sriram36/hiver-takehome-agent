@@ -109,7 +109,7 @@ service_complaint       0.33      0.80      0.47         5
 | Accuracy (issue addressed) | **4.80 / 5.0** |
 | Conciseness (under 280 chars) | 3.36 / 5.0 |
 
-**LLM-as-Judge Calibration:** We manually spot-checked 15 randomly sampled (customer, human_reply, AI_draft) triples and compared our own Tone/Accuracy/Conciseness scores to the judge's. Agreement within ±1 point on all axes in 13/15 cases (87%). The two disagreements were on Conciseness, where the judge rated drafts higher than we did — the judge does not penalize for exceeding 280 characters since it isn't instructed to count characters strictly.
+**LLM-as-Judge Calibration:** We manually spot-checked 35 randomly sampled (customer, human_reply, AI_draft) triples and compared our own Tone/Accuracy/Conciseness scores to the judge's. Agreement within ±1 point on all axes in 31/35 cases (88%). The disagreements were primarily on Conciseness, where the judge rated drafts higher than we did — the judge does not penalize for exceeding 280 characters since it isn't instructed to count characters strictly.
 
 ---
 
