@@ -8,8 +8,8 @@ An end-to-end AI support pipeline that classifies incoming customer tweets, retr
 
 ### 1. Clone & Set Up Environment
 ```bash
-git clone <your-repo-url>
-cd Hiver
+git clone https://github.com/sriram36/hiver-takehome-agent.git
+cd hiver-takehome-agent
 
 # Create and activate virtual environment
 python -m venv venv
@@ -59,7 +59,7 @@ Tone: 4.13 / 5  |  Accuracy: 4.80 / 5  |  Conciseness: 3.36 / 5
 ## Repository Structure
 
 ```
-Hiver/
+hiver-takehome-agent/
 ├── src/
 │   ├── pipeline/
 │   │   ├── state.py           # LangGraph AgentState TypedDict
