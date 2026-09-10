@@ -1,6 +1,6 @@
 # Decision Log
 
-A record of the 12 non-obvious decisions made during this project, with reasoning.
+A record of the 13 non-obvious decisions made during this project, with reasoning.
 
 ---
 
@@ -61,3 +61,9 @@ Providing 50 real AmazonHelp replies as inline context for every draft request w
 
 **12. Evaluated with macro F1, not accuracy**
 The `other` class holds 40% of examples. Accuracy rewards a system that calls everything `other`. Macro F1 weights each class equally, penalizing the system for ignoring minority intents — which is exactly the production failure mode we care about (mis-routing a `refund_billing` as `other` has real consequences).
+
+---
+
+**13. AI assistance disclosure**
+This project was scaffolded with the help of AI coding assistants (Claude / Antigravity). All architectural decisions, taxonomy definitions, labeling judgments, failure analyses, and final code were reviewed, understood, and can be explained by me. The assignment explicitly permits AI assistants; this note is here because the rules also say "cite anything you borrowed."
+

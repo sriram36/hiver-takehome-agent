@@ -97,7 +97,7 @@ hiver-takehome-agent/
 │   └── eval_results.csv       # Last evaluation run outputs
 │
 ├── report.md                  # Problem framing, results, failure analysis
-├── decision_log.md            # 12 key technical decisions with reasoning
+├── decision_log.md            # 13 key technical decisions with reasoning
 ├── requirements.txt
 ├── .env.example
 └── README.md

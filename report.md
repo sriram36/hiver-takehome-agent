@@ -92,6 +92,21 @@ Per-class breakdown (test set):
 service_complaint       0.33      0.80      0.47         5
 ```
 
+**Confusion matrix** (rows = true label, columns = predicted):
+
+| | acc_acc | app_tec | del_del | itm_iss | other | ref_bil | ret_can | svc_cmp |
+|---|---|---|---|---|---|---|---|---|
+| **acc_acc** | **4** | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| **app_tec** | 0 | **4** | 0 | 0 | 1 | 0 | 0 | 1 |
+| **del_del** | 0 | 0 | **10** | 0 | 1 | 0 | 0 | 0 |
+| **itm_iss** | 0 | 0 | 1 | **4** | 0 | 0 | 0 | 0 |
+| **other** | 0 | 0 | 6 | 3 | **10** | 2 | 0 | 7 |
+| **ref_bil** | 0 | 0 | 0 | 0 | 0 | **5** | 0 | 0 |
+| **ret_can** | 1 | 0 | 0 | 0 | 0 | 0 | **4** | 0 |
+| **svc_cmp** | 0 | 0 | 0 | 0 | 0 | 1 | 0 | **4** |
+
+The dominant error pattern is clear: 18 of 25 misclassifications (72%) are true-`other` tweets predicted as a named intent — especially `service_complaint` (7), `delivery_delay` (6), and `item_issue` (3). The LLM is "too eager" to find a specific intent when the message is genuinely ambiguous. This is the same finding described in Failure Mode 1, but the matrix makes the asymmetry undeniable.
+
 ### Escalation Routing (Test Set)
 
 | Metric | Value |
@@ -110,6 +125,46 @@ service_complaint       0.33      0.80      0.47         5
 | Conciseness (under 280 chars) | 3.36 / 5.0 |
 
 **LLM-as-Judge Calibration:** We manually spot-checked 35 randomly sampled (customer, human_reply, AI_draft) triples and compared our own Tone/Accuracy/Conciseness scores to the judge's. Agreement within ±1 point on all axes in 31/35 cases (88%). The disagreements were primarily on Conciseness, where the judge rated drafts higher than we did — the judge does not penalize for exceeding 280 characters since it isn't instructed to count characters strictly.
+
+### Worked End-to-End Examples
+
+Five real test-set tweets through the full pipeline (classify → retrieve → draft → route). Four correct, one failure.
+
+**Example 1 — `delivery_delay` (correct, auto-handled)**
+> **Customer:** "Pay for @115821 prime and I've order 2 items in the last 2 days both I've had issues with delivery! Fuming!"
+>
+> **→ Intent:** `delivery_delay` (confidence: 0.92) · **Retrieval:** top match sim=0.571
+> **→ Draft:** "Hi there, I'm so sorry your Prime deliveries have been frustrating — I understand how annoying that is. Please contact us here so we can review your orders and help: https://t.co/JzP7hlA23B. Appreciate your patience. ^TR"
+> **→ Route:** auto-handled · **Judge:** Tone 4, Accuracy 5, Conciseness 3
+
+**Example 2 — `refund_billing` (correct, escalated)**
+> **Customer:** "I had opted for a no cost emi to buy a phone recently. And then I'm told there was a glitch and interest amt wld be refunded as amazon pay"
+>
+> **→ Intent:** `refund_billing` (confidence: 0.95) · **Retrieval:** top match sim=0.403
+> **→ Draft:** "Hi there, I'm so sorry about the confusion with the no-cost EMI and interest refund. Please share your details via our secure form so we can investigate and assist: https://t.co/cllwXc2HeK Appreciate your patience. ^TR"
+> **→ Route:** escalated — *"Intent 'refund_billing' is high-risk"* · **Judge:** Tone 5, Accuracy 5, Conciseness 4
+
+**Example 3 — `account_access` (correct, escalated)**
+> **Customer:** "Account suspended due to suspected hack. Keep being told it will be resolved in 48hrs. Never is."
+>
+> **→ Intent:** `account_access` (confidence: 0.95) · **Retrieval:** top match sim=0.526
+> **→ Draft:** "Hi there, I'm so sorry your account was suspended and the 48‑hour timeframe hasn't been met. Please DM us so we can escalate this to our secure support team — include your case ID if you have one. Appreciate your patience. ^TR"
+> **→ Route:** escalated — *"Intent 'account_access' is high-risk"* · **Judge:** Tone 5, Accuracy 5, Conciseness 4
+
+**Example 4 — `return_cancel` (correct, auto-handled)**
+> **Customer:** "Thanks! Trying to see if I can get a return label without having to pay for it! Doesn't seem to be an option this time."
+>
+> **→ Intent:** `return_cancel` (confidence: 0.95) · **Retrieval:** top match sim=0.319
+> **→ Draft:** "Hi there, I'm so sorry you're not seeing a free return label. Please go to https://www.amazon.com/returns or Help > Contact Us and use the secure page to share your order so we can review options. Appreciate your patience. ^AS"
+> **→ Route:** auto-handled · **Judge:** Tone 4, Accuracy 5, Conciseness 3
+
+**Example 5 — FAILURE: true `other`, predicted `service_complaint`**
+> **Customer:** "Your service has become totally unreliable!"
+>
+> **→ Intent:** `service_complaint` (confidence: 0.95) · **Retrieval:** top match sim=0.48
+> **→ Route:** escalated — *"Intent 'service_complaint' is high-risk"*
+>
+> **Why it failed:** The human labeled this `other` (a vague vent with no actionable content), but the classifier saw frustration language and mapped it to `service_complaint`. The taxonomy boundary is genuinely ambiguous here — the reply the agent drafted would still be appropriate, but it gets escalated unnecessarily. This is Failure Mode 1 in action.
 
 ---
 
@@ -143,6 +198,22 @@ service_complaint       0.33      0.80      0.47         5
 
 5. **Context-Free Vagueness Breaks Retrieval** *(≈5% of cases)*
    Very short, ambiguous tweets ("When is the announcing date n time") produce FAISS similarity scores below 0.3, triggering escalation even when the issue is trivial. The retrieval step fails to anchor the draft, and the LLM falls back to generic phrasing that the judge scores low on conciseness.
+
+---
+
+### Adversarial / Edge-Case Probes
+
+To test behavior outside the golden set's assumptions, we fed the pipeline 5 inputs it was never designed for:
+
+| Input | Intent | Conf | Escalation | Observation |
+|---|---|---|---|---|
+| *(empty string)* | `other` | 0.30 | **escalate** — low confidence + zero retrieval similarity | ✅ Safe: correctly refuses to auto-handle nothing |
+| 😡😡😡🔥💀 | `other` | 0.65 | **escalate** — zero retrieval similarity | ✅ Safe: recognizes anger but won't auto-reply without context |
+| Spanish: "Mi paquete no ha llegado…" | `delivery_delay` | 0.95 | auto | ⚠️ Correctly classified, replies in Spanish — but the brand voice guide is English-only. Functional but unvalidated |
+| Hindi: "मेरा ऑर्डर नहीं आया है…" | `delivery_delay` | 0.95 | auto | ⚠️ Same pattern — correct intent, Hindi reply. Retrieval sim=1.0 (likely a TF-IDF artifact from sparse overlap). Auto-handling a non-English tweet without human review is risky |
+| Gibberish: "asdfghjkl qwerty…" | `other` | 0.86 | **escalate** — zero retrieval similarity | ✅ Safe: doesn't hallucinate an intent, drafts a polite "I didn't understand" |
+
+**Key finding:** The escalation rules act as a safety net even when classification is wrong. Low retrieval similarity (sim < 0.3) catches inputs that have no historical precedent and routes them to a human. The one blind spot is non-English text, where the LLM classifies correctly but the system auto-handles without language-appropriate brand voice validation.
 
 ---
 
